@@ -1,26 +1,27 @@
 pipeline {
-    agent {
-        docker {
-            image 'golang:1.22-alpine'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent none
 
     environment {
         SONAR_HOST_URL = "http://34.31.6.209:9000"
-        SONAR_TOKEN = credentials('sonar-token')
         IMAGE = "devopriyanshu/go-app:latest"
     }
 
     stages {
 
         stage('Checkout') {
+            agent any
             steps {
                 git branch: 'main', url: 'https://github.com/devopriyanshu/go-app.git'
             }
         }
 
-        stage('Test') {
+        stage('Test (Go inside Docker)') {
+            agent {
+                docker {
+                    image 'golang:1.22-alpine'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 sh '''
                 export GOCACHE=/tmp/go-cache
@@ -30,7 +31,13 @@ pipeline {
             }
         }
 
-        stage('Build Go Binary') {
+        stage('Build Go Binary (Go inside Docker)') {
+            agent {
+                docker {
+                    image 'golang:1.22-alpine'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 sh '''
                 export GOCACHE=/tmp/go-cache
@@ -42,31 +49,27 @@ pipeline {
 
         stage('Sonar Scan') {
             agent any
-            environment {
-                SONAR_URL = "http://34.31.6.209:9000"
-            }
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')]) {
                     sh """
                     sonar-scanner \
-                    -Dsonar.projectKey=go-demo \
-                    -Dsonar.host.url=${SONAR_URL} \
-                    -Dsonar.login=$SONAR_AUTH_TOKEN \
-                    -Dsonar.go.coverage.reportPaths=coverage.out
+                      -Dsonar.projectKey=go-demo \
+                      -Dsonar.host.url=${SONAR_HOST_URL} \
+                      -Dsonar.login=$SONAR_AUTH_TOKEN \
+                      -Dsonar.go.coverage.reportPaths=coverage.out
                     """
                 }
             }
         }
 
-
         stage('Build & Push Image') {
+            agent any
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'docker-cred',
                     usernameVariable: 'DOCKERHUB_USER',
                     passwordVariable: 'DOCKERHUB_PASS'
                 )]) {
-
                     sh """
                     echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
                     docker build -t $IMAGE .
@@ -77,6 +80,7 @@ pipeline {
         }
 
         stage('Deploy') {
+            agent any
             steps {
                 sh """
                 docker pull $IMAGE
