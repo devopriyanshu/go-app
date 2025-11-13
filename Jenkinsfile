@@ -22,13 +22,21 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh 'go test ./... -coverprofile=coverage.out'
+                sh '''
+                export GOCACHE=/tmp/go-cache
+                mkdir -p /tmp/go-cache
+                go test ./... -coverprofile=coverage.out
+                '''
             }
         }
 
         stage('Build Go Binary') {
             steps {
-                sh 'go build -o app'
+                sh '''
+                export GOCACHE=/tmp/go-cache
+                mkdir -p /tmp/go-cache
+                go build -o app
+                '''
             }
         }
 
@@ -54,7 +62,6 @@ pipeline {
 
                     sh """
                     echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
-
                     docker build -t $IMAGE .
                     docker push $IMAGE
                     """
