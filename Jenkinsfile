@@ -41,16 +41,23 @@ pipeline {
         }
 
         stage('Sonar Scan') {
+            agent any
+            environment {
+                SONAR_URL = "http://34.31.6.209:9000"
+            }
             steps {
-                sh """
-                sonar-scanner \
-                  -Dsonar.projectKey=go-demo \
-                  -Dsonar.host.url=$SONAR_HOST_URL \
-                  -Dsonar.login=$SONAR_TOKEN \
-                  -Dsonar.go.coverage.reportPaths=coverage.out
-                """
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')]) {
+                    sh """
+                    sonar-scanner \
+                    -Dsonar.projectKey=go-demo \
+                    -Dsonar.host.url=${SONAR_URL} \
+                    -Dsonar.login=$SONAR_AUTH_TOKEN \
+                    -Dsonar.go.coverage.reportPaths=coverage.out
+                    """
+                }
             }
         }
+
 
         stage('Build & Push Image') {
             steps {
