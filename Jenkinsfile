@@ -11,9 +11,10 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git 'https://github.com/devopriyanshu/go-app.git'
+                git branch: 'main', url: 'https://github.com/devopriyanshu/go-app.git'
             }
         }
+
 
         stage('Test') {
             steps {
