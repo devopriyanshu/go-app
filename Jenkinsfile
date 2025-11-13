@@ -1,8 +1,13 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'golang:1.22-alpine'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     environment {
-        SONAR_HOST_URL = "http://34.31.6.209/9000"
+        SONAR_HOST_URL = "http://34.31.6.209:9000"
         SONAR_TOKEN = credentials('sonar-token')
         IMAGE = "devopriyanshu/go-app:latest"
     }
@@ -14,7 +19,6 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/devopriyanshu/go-app.git'
             }
         }
-
 
         stage('Test') {
             steps {
@@ -49,13 +53,9 @@ pipeline {
                 )]) {
 
                     sh """
-                    echo "Logging into Docker Hub..."
                     echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
 
-                    echo "Building Docker image..."
                     docker build -t $IMAGE .
-
-                    echo "Pushing Docker image..."
                     docker push $IMAGE
                     """
                 }
